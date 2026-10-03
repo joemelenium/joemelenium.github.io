@@ -138,11 +138,12 @@ footer { font-size: .8rem; color: var(--muted) }
   <header>
     <span class="tag">Illustrative demo · synthetic data · not clinically validated</span>
     <h1>Triage Engine Test Bench</h1>
-    <p class="muted">Three kinds of triage engine, the same cases, the same simulated patients, one answer key.</p>
+    <p>A simple demo of what a triage engine evaluation tool should enable: comparing triage tools side by side to inform the choice of tool.</p>
+    <p class="muted">Three kinds of triage engine, the same cases, the same LLM simulated personas, one answer key.</p>
   </header>
 
   <div class="flow" aria-label="How the test works">
-    <b>21 cases</b><span class="sep">→</span><b>5 simulated patients</b><span class="sep">→</span><b>3 engines</b><span class="sep">→</span><b>Scored against the answer key</b>
+    <b>21 cases</b><span class="sep">→</span><b>5 LLM simulated personas</b><span class="sep">→</span><b>3 engines</b><span class="sep">→</span><b>Scored against the answer key</b>
   </div>
 
   <div class="scale" id="scale" aria-label="Urgency scale"></div>
@@ -150,7 +151,7 @@ footer { font-size: .8rem; color: var(--muted) }
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="results" aria-selected="true">Results</button>
     <button class="tab" role="tab" data-tab="vignettes" aria-selected="false">Case tests</button>
-    <button class="tab" role="tab" data-tab="personas" aria-selected="false">Patient tests</button>
+    <button class="tab" role="tab" data-tab="personas" aria-selected="false">Persona tests</button>
     <button class="tab" role="tab" data-tab="how" aria-selected="false">How it works</button>
   </nav>
 
@@ -328,7 +329,7 @@ if (typeof module !== "undefined") module.exports = { LEVELS, AREAS, FEATURES, V
 //   patient.ask(featureKey)   -> { a: "yes" | "no" | "unsure", say }
 // and return { level, transcript, notes }.
 
-// ===== 1. Deterministic: rules engine (simplified Pathways-style flowchart) =====
+// ===== 1. Deterministic: rules engine (simplified protocol-style flowchart) =====
 const RULES = {
   // Asked of everyone first, in order. First "yes" ends the assessment.
   module0: [["breathless_severe", 1], ["face_arm_speech", 1], ["confused_drowsy", 1],
@@ -593,8 +594,8 @@ if (typeof module !== "undefined") module.exports = { RECORDED };
 <script>
 // ===================== App =====================
 const ENGINES = [
-  { id: "rules", name: "Rules engine", kind: "Deterministic", like: "Like NHS Pathways, heavily simplified" },
-  { id: "bayes", name: "Probability engine", kind: "Probabilistic", like: "Like Infermedica or Ada, heavily simplified" },
+  { id: "rules", name: "Rules engine", kind: "Deterministic", like: "Rules-based protocol, heavily simplified" },
+  { id: "bayes", name: "Probability engine", kind: "Probabilistic", like: "Probabilistic symptom checker, heavily simplified" },
   { id: "llm",   name: "Language model", kind: "LLM / Agentic", like: "A general AI model (Claude) given the urgency scale" },
 ];
 const V = Object.fromEntries(VIGNETTES.map((v) => [v.id, v]));
@@ -680,10 +681,10 @@ function renderResults() {
       <div class="overall"><span class="v">${r.overall}</span><span class="k">Overall score / 100</span></div>
       <div class="metrics">
         ${m("Clinically suitable", "Written cases", `${r.v.exact}/${r.v.n}`)}
-        ${m("Clinically suitable", "Simulated patients", `${r.p.exact}/${r.p.n}`)}
+        ${m("Clinically suitable", "LLM simulated personas", `${r.p.exact}/${r.p.n}`)}
         ${m("Unsafe answers", "Missed an emergency", unsafe, unsafe ? "bad" : "good")}
         ${m("Patient experience", "UX score / 100", Math.round(r.uxAvg))}
-        ${m("Same answer for every patient", "Cases where the answer held", `${PERSONA_CASES.length - r.changed}/${PERSONA_CASES.length}`)}
+        ${m("Same answer for every persona", "Cases where the answer held", `${PERSONA_CASES.length - r.changed}/${PERSONA_CASES.length}`)}
       </div>
     </article>`;
   };
@@ -693,7 +694,7 @@ function renderResults() {
       <h2>What it shows</h2>
       <ul class="points">
         <li>Textbook cases flatter the structured engines.</li>
-        <li>How a patient tells their story changes the answer, for every engine.</li>
+        <li>How a persona tells the story changes the answer, for every engine.</li>
         <li>The language model gives the best experience but is less consistent and over-cautious.</li>
         <li>One shared test bench lets us compare any engine, bought or built, on equal terms.</li>
       </ul>
@@ -764,11 +765,11 @@ function renderPersonas() {
     return `<tr><td class="case">${esc(p.name)}<small>${esc(SHORT[p.id] || "Your description")}</small></td>${cells}</tr>`;
   }).join("");
   $("#p-personas").innerHTML = `
-    <p class="muted">The same case, told five ways by an AI playing the patient.</p>
+    <p class="muted">The same case, told five ways by LLM simulated personas.</p>
     <div class="controls">${caseBtns}</div>
     <p class="small">Answer key ${chip(v.gold)}</p>
     <div class="scroll"><table>
-      <thead><tr><th>Patient</th><th>Rules</th><th>Probability</th><th>Language model</th></tr></thead>
+      <thead><tr><th>Persona</th><th>Rules</th><th>Probability</th><th>Language model</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div id="per-detail"></div>`;
   $("#p-personas .controls").onclick = (e) => { const b = e.target.closest("[data-case]"); if (b) { selCase = b.dataset.case; renderPersonas(); } };
@@ -797,14 +798,14 @@ function renderPerDetail() {
 function renderHow() {
   $("#p-how").innerHTML = `
     <div class="three">
-      <article class="card"><div><h3>Rules engine</h3><div class="kind">Deterministic · like a simplified NHS Pathways</div></div>
+      <article class="card"><div><h3>Rules engine</h3><div class="kind">Deterministic · like a simplified rules-based protocol</div></div>
         <p class="small">Red-flag questions, then a fixed flowchart. Same answer every time; only knows what it asks.</p></article>
-      <article class="card"><div><h3>Probability engine</h3><div class="kind">Probabilistic · like a simplified Infermedica</div></div>
+      <article class="card"><div><h3>Probability engine</h3><div class="kind">Probabilistic · like a simplified symptom checker</div></div>
         <p class="small">Weighs ${Object.keys(CONDITIONS).length} conditions and picks the most useful next question. Blind to anything it doesn't model.</p></article>
       <article class="card"><div><h3>Language model</h3><div class="kind">LLM / Agentic · Claude</div></div>
         <p class="small">Free conversation, no flowchart. Flexible, but less consistent and harder to audit.</p></article>
     </div>
-    <div class="detail-head"><h3>Simulated patients</h3></div>
+    <div class="detail-head"><h3>LLM simulated personas</h3></div>
     <div class="pgrid">${PERSONAS.map((p) => `<span><b>${esc(p.name)}</b> <span class="muted">· ${esc(SHORT[p.id])}</span></span>`).join("")}</div>
     <div class="detail-head"><h3>Scoring</h3></div>
     <div class="legend">
