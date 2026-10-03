@@ -137,11 +137,13 @@ footer { font-size: .8rem; color: var(--muted) }
 table.grouped td, table.grouped th { padding: 8px 14px }
 table.grouped tbody.vg tr { cursor: default }
 table.grouped tbody.vg tr:hover td { background: none }
-tr.vhead td { background: var(--sunk); border-top: 6px solid var(--bg) }
-.vh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px }
-.vt { display: grid; min-width: 180px; flex: 1; color: var(--strong) }
+tr.vhead td, tr.vhead th { background: var(--sunk); border-top: 10px solid var(--bg); vertical-align: bottom; padding-block: 12px 10px }
+.vt { display: grid; gap: 2px; min-width: 190px; color: var(--strong) }
+.vt b { font-size: 1rem }
 .vt small { color: var(--muted); font-size: .76rem }
-.vx { display: inline-flex; align-items: center; gap: 8px }
+.vx { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px }
+th.eh { color: var(--strong); font-size: .95rem; font-weight: 700; white-space: nowrap; min-width: 170px }
+th.eh small { display: block; color: var(--muted); font-size: .74rem; font-weight: 500 }
 td.pname { color: var(--fg); font-size: .86rem; white-space: nowrap }
 td.res { padding: 4px 8px }
 td.res button { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 1px solid transparent; border-radius: 10px; padding: 6px 8px; color: inherit; text-align: left }
@@ -673,18 +675,14 @@ function renderVignettes() {
         ${chip(r.level)}<span class="vd ${vd}">${VERDICT[vd].icon} ${VERDICT[vd].text}</span></button></td>`;
     }).join("")}</tr>`).join("");
     return `<tbody class="vg">
-      <tr class="vhead"><td colspan="4"><div class="vh">
-        <span class="vt"><b>${esc(v.title)}</b><small>${v.cat}</small></span>
-        <span class="vx"><span class="small muted">Clinicians expect</span>${chip(v.gold)}</span>
-        <span class="small muted vs">${right}/9 right</span>
-      </div></td></tr>${rows}</tbody>`;
+      <tr class="vhead"><td><div class="vt"><b>${esc(v.title)}</b><small>${v.cat} · ${right}/9 right</small>
+          <span class="vx"><span class="small muted">Clinicians expect</span>${chip(v.gold)}</span></div></td>
+        ${ENGINES.map((e) => `<th scope="col" class="eh">${e.name}<small>${e.kind}</small></th>`).join("")}</tr>${rows}</tbody>`;
   }).join("");
   $("#p-vignettes").innerHTML = `
     <p class="muted">Each vignette is told by three LLM personas to every engine. Select any result to read the conversation.</p>
     <div class="legend small">${Object.entries(VERDICT).map(([k, x]) => `<span class="vd ${k}">${x.icon} ${x.text}</span>`).join("")}</div>
-    <div class="scroll"><table class="grouped">
-      <thead><tr><th>Persona</th>${ENGINES.map((e) => `<th>${e.name}</th>`).join("")}</tr></thead>
-      ${groups}</table></div>`;
+    <div class="scroll"><table class="grouped">${groups}</table></div>`;
   $("#p-vignettes table").onclick = (ev) => { const b = ev.target.closest("button[data-eng]"); if (b) openConversation(b.dataset.v, b.dataset.pid, b.dataset.eng); };
 }
 
