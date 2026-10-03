@@ -140,18 +140,18 @@ footer { font-size: .8rem; color: var(--muted) }
     <span class="tag">Illustrative demo · synthetic data · not clinically validated</span>
     <h1>Triage Engine Test Bench</h1>
     <p>A simple demo of what a triage engine evaluation tool should enable: comparing triage tools side by side to inform the choice of tool.</p>
-    <p class="muted">Three kinds of triage engine, the same cases, the same LLM simulated personas, one answer key.</p>
+    <p class="muted">Three kinds of triage engine, the same clinical vignettes, the same LLM simulated personas, one clinical expectation.</p>
   </header>
 
   <div class="flow" aria-label="How the test works">
-    <b>21 cases</b><span class="sep">→</span><b>5 LLM simulated personas</b><span class="sep">→</span><b>3 engines</b><span class="sep">→</span><b>Scored against the answer key</b>
+    <b>21 clinical vignettes</b><span class="sep">→</span><b>5 LLM simulated personas</b><span class="sep">→</span><b>3 engines</b><span class="sep">→</span><b>Scored against the clinical expectation</b>
   </div>
 
   <div class="scale" id="scale" aria-label="Urgency scale"></div>
 
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="results" aria-selected="true">Results</button>
-    <button class="tab" role="tab" data-tab="vignettes" aria-selected="false">Case tests</button>
+    <button class="tab" role="tab" data-tab="vignettes" aria-selected="false">Clinical vignettes</button>
     <button class="tab" role="tab" data-tab="personas" aria-selected="false">Persona tests</button>
     <button class="tab" role="tab" data-tab="how" aria-selected="false">How it works</button>
   </nav>
@@ -681,7 +681,7 @@ function renderResults() {
       <div><h3>${e.name}</h3><div class="kind">${e.kind}</div></div>
       <div class="overall"><span class="v">${r.overall}</span><span class="k">Overall score / 100</span></div>
       <div class="metrics">
-        ${m("Clinically suitable", "Written cases", `${r.v.exact}/${r.v.n}`)}
+        ${m("Clinically suitable", "Clinical vignettes", `${r.v.exact}/${r.v.n}`)}
         ${m("Clinically suitable", "LLM simulated personas", `${r.p.exact}/${r.p.n}`)}
         ${m("Unsafe answers", "Missed an emergency", unsafe, unsafe ? "bad" : "good")}
         ${m("Patient experience", "UX score / 100", Math.round(r.uxAvg))}
@@ -706,9 +706,9 @@ function renderVignettes() {
     </tr>`;
   }).join("");
   $("#p-vignettes").innerHTML = `
-    <p class="muted">Each case, told clearly. Select a row to see the conversations.</p>
+    <p class="muted">Clinically written cases, each with the outcome clinicians expect. Select a row to see the conversations.</p>
     <div class="scroll"><table>
-      <thead><tr><th>Case</th><th>Answer key</th><th>Rules</th><th>Probability</th><th>LLM/Agentic</th></tr></thead>
+      <thead><tr><th>Vignette</th><th>Clinical expectation</th><th>Rules</th><th>Probability</th><th>LLM/Agentic</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div id="vig-detail"></div>`;
   $("#p-vignettes tbody").onclick = (e) => { const tr = e.target.closest("tr"); if (tr) { selVig = tr.dataset.id; selRun = 0; renderVignettes(); $("#vig-detail").scrollIntoView({ behavior: "smooth", block: "start" }); } };
@@ -735,7 +735,7 @@ function renderVigDetail() {
   $("#vig-detail").innerHTML = `<div class="detail">
     <div class="detail-head"><h3>${esc(v.title)}</h3>
       <p class="small">${esc(v.narrative)}</p>
-      <p class="small muted">Answer key ${chip(v.gold)} ${esc(v.why)}</p></div>
+      <p class="small muted">Clinical expectation ${chip(v.gold)} ${esc(v.why)}</p></div>
     <div class="three">
       ${engineCol("Rules", r.rules.level, v.gold, chatHtml(r.rules.transcript) + notesHtml(r.rules.notes))}
       ${engineCol("Probability", r.bayes.level, v.gold, chatHtml(r.bayes.transcript) + notesHtml(r.bayes.notes.slice(0, 1)))}
@@ -757,9 +757,9 @@ function renderPersonas() {
     return `<tr><td class="case">${esc(p.name)}<small>${esc(SHORT[p.id] || "Your description")}</small></td>${cells}</tr>`;
   }).join("");
   $("#p-personas").innerHTML = `
-    <p class="muted">The same case, told five ways by LLM simulated personas.</p>
+    <p class="muted">The same clinical vignette, told five ways by LLM simulated personas.</p>
     <div class="controls">${caseBtns}</div>
-    <p class="small">Answer key ${chip(v.gold)}</p>
+    <p class="small">Clinical expectation ${chip(v.gold)}</p>
     <div class="scroll"><table>
       <thead><tr><th>Persona</th><th>Rules</th><th>Probability</th><th>LLM/Agentic</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
@@ -801,17 +801,17 @@ function renderHow() {
     <div class="pgrid">${PERSONAS.map((p) => `<span><b>${esc(p.name)}</b> <span class="muted">· ${esc(SHORT[p.id])}</span></span>`).join("")}</div>
     <div class="detail-head"><h3>Scoring</h3></div>
     <div class="legend">
-      <span class="mark ok">Right</span><span class="muted">matches the answer key</span>
+      <span class="mark ok">Right</span><span class="muted">matches the clinical expectation</span>
       <span class="mark over">Too cautious</span><span class="muted">uses capacity it didn't need</span>
       <span class="mark under">Too low</span><span class="muted">one level short</span>
       <span class="mark unsafe">Unsafe</span><span class="muted">missed an emergency</span>
     </div>
     <ul class="points small">
-      <li><b>Clinically suitable:</b> answers that match the clinical answer key.</li>
+      <li><b>Clinically suitable:</b> answers that match the outcome clinicians expect.</li>
       <li><b>Patient experience (UX):</b> fewer questions, questions the patient understood, and being able to explain in their own words.</li>
       <li><b>Overall:</b> 40% clinically suitable, 40% safety (no unsafe answers), 20% patient experience.</li>
     </ul>
-    <p class="small muted">All engines are small stand-ins built for this demo. Cases and answer key are drafts.</p>`;
+    <p class="small muted">All engines are small stand-ins built for this demo. Vignettes and clinical expectations are drafts for illustration, not yet clinically signed off.</p>`;
 }
 
 const renderers = { results: renderResults, vignettes: renderVignettes, personas: renderPersonas, how: renderHow };
