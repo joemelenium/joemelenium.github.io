@@ -133,8 +133,32 @@ textarea { font: inherit; background: var(--surface); color: var(--fg); border: 
 .pgrid b { font-weight: 600; color: var(--strong) }
 footer { font-size: .8rem; color: var(--muted) }
 @media (prefers-reduced-motion: no-preference) { .detail { animation: rise .25s ease-out } @keyframes rise { from { transform: translateY(4px) } to { transform: none } } }
-.pm { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; font-size: .72rem; font-weight: 700; color: var(--l-ink) }
-.pm.ok { background: var(--good) } .pm.over { background: var(--warn) } .pm.under, .pm.unsafe { background: var(--bad) }
+/* Grouped vignette table */
+table.grouped td, table.grouped th { padding: 8px 14px }
+table.grouped tbody.vg tr { cursor: default }
+table.grouped tbody.vg tr:hover td { background: none }
+tr.vhead td { background: var(--sunk); border-top: 6px solid var(--bg) }
+.vh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px }
+.vt { display: grid; min-width: 180px; flex: 1; color: var(--strong) }
+.vt small { color: var(--muted); font-size: .76rem }
+.vx { display: inline-flex; align-items: center; gap: 8px }
+td.pname { color: var(--fg); font-size: .86rem; white-space: nowrap }
+td.res { padding: 4px 8px }
+td.res button { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 1px solid transparent; border-radius: 10px; padding: 6px 8px; color: inherit; text-align: left }
+td.res button:hover { border-color: var(--accent); background: var(--accent-soft) }
+td.res.unsafe button, td.res.under button { background: var(--bad-soft) }
+td.res.over button { background: var(--warn-soft) }
+.vd { font-size: .78rem; font-weight: 600; white-space: nowrap }
+.vd.ok { color: var(--good) } .vd.over { color: var(--warn) } .vd.under, .vd.unsafe { color: var(--bad) }
+/* Conversation side panel */
+.drawer { position: fixed; inset: 0; z-index: 10 }
+.backdrop { position: absolute; inset: 0; background: rgb(15 25 28 / .45) }
+.sheet { position: absolute; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--surface); box-shadow: -8px 0 32px rgb(0 0 0 / .2);
+  overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 18px) 20px calc(env(safe-area-inset-bottom, 0px) + 24px); display: grid; gap: 14px; align-content: start }
+#drawer-close { justify-self: end }
+#drawer-body { display: grid; gap: 12px }
+.compare { display: flex; flex-wrap: wrap; gap: 10px 24px; background: var(--bg); border-radius: 12px; padding: 12px 14px }
+.compare > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
 </style>
 
 <div class="wrap">
@@ -160,6 +184,14 @@ footer { font-size: .8rem; color: var(--muted) }
   <section class="panel" id="p-results"></section>
   <section class="panel" id="p-vignettes" hidden></section>
   <section class="panel" id="p-how" hidden></section>
+</div>
+
+<div id="drawer" class="drawer" hidden>
+  <div class="backdrop" data-close></div>
+  <aside class="sheet" role="dialog" aria-modal="true" aria-label="Conversation">
+    <button id="drawer-close" class="btn ghost" data-close>Close</button>
+    <div id="drawer-body"></div>
+  </aside>
 </div>
 
 <script>
@@ -625,58 +657,61 @@ function renderResults() {
   }).join("")}</div>`;
 }
 
-let selV = "V15", selCell = { pid: "clear", eng: "rules" };
+const VERDICT = {
+  ok: { icon: "✓", text: "Right" }, over: { icon: "↑", text: "Too cautious" },
+  under: { icon: "↓", text: "Too low" }, unsafe: { icon: "✕", text: "Unsafe" },
+};
+const verdictOf = (level, gold) => { const s = score(level, gold); return s.exact ? "ok" : s.unsafe ? "unsafe" : s.under ? "under" : "over"; };
+
 function renderVignettes() {
-  const v = V[selV];
-  // Overview: one row per vignette, three persona results per engine
-  const overview = VIGNETTES.map((x) => `<tr data-v="${x.id}" class="${x.id === selV ? "sel" : ""}">
-      <td class="case">${esc(x.title)}<small>${x.cat}</small></td>
-      <td>${chip(x.gold)}</td>
-      ${ENGINES.map((e) => `<td><span class="runs" title="Clear · Limited English · Anxious">${PERSONAS.map((p) => {
-        const r = results[x.id][p.id][e.id], sc = score(r.level, x.gold);
-        return `<span class="pm ${sc.exact ? "ok" : sc.unsafe ? "unsafe" : sc.under ? "under" : "over"}">${p.icon}</span>`;
-      }).join("")}</span></td>`).join("")}
-    </tr>`).join("");
-  // Detail: personas × engines for the selected vignette
-  const grid = PERSONAS.map((p) => `<tr><td class="case">${esc(p.name)}<small>${esc(SHORT[p.id])}</small></td>${ENGINES.map((e) => {
-      const r = results[v.id][p.id][e.id], on = selCell.pid === p.id && selCell.eng === e.id;
-      return `<td data-pid="${p.id}" data-eng="${e.id}" class="${on ? "on" : ""}"><span class="cell">${chip(r.level)}${mark(r.level, v.gold)}</span></td>`;
+  const groups = VIGNETTES.map((v) => {
+    let right = 0;
+    const rows = PERSONAS.map((p) => `<tr><td class="pname">${esc(p.name)}</td>${ENGINES.map((e) => {
+      const r = results[v.id][p.id][e.id], vd = verdictOf(r.level, v.gold);
+      if (vd === "ok") right++;
+      return `<td class="res ${vd}"><button data-v="${v.id}" data-pid="${p.id}" data-eng="${e.id}" aria-label="${esc(p.name)}, ${e.name}: ${LEVELS[r.level].label}, ${VERDICT[vd].text}. Open conversation">
+        ${chip(r.level)}<span class="vd ${vd}">${VERDICT[vd].icon} ${VERDICT[vd].text}</span></button></td>`;
     }).join("")}</tr>`).join("");
+    return `<tbody class="vg">
+      <tr class="vhead"><td colspan="4"><div class="vh">
+        <span class="vt"><b>${esc(v.title)}</b><small>${v.cat}</small></span>
+        <span class="vx"><span class="small muted">Clinicians expect</span>${chip(v.gold)}</span>
+        <span class="small muted vs">${right}/9 right</span>
+      </div></td></tr>${rows}</tbody>`;
+  }).join("");
   $("#p-vignettes").innerHTML = `
-    <p class="muted">Clinically written cases, each with the outcome clinicians expect. Each is told by three LLM personas to every engine.</p>
-    <div class="legend small"><span class="pm ok">C</span><span class="muted">Clear</span><span class="pm ok">E</span><span class="muted">Limited English</span><span class="pm ok">A</span><span class="muted">Anxious</span>
-      <span class="muted">· green right, amber too cautious, red unsafe or too low</span></div>
-    <div class="scroll"><table>
-      <thead><tr><th>Vignette</th><th>Clinical expectation</th>${ENGINES.map((e) => `<th>${e.short}</th>`).join("")}</tr></thead>
-      <tbody id="ov">${overview}</tbody></table></div>
-    <div class="detail">
-      <div class="detail-head"><h3>${esc(v.title)}</h3>
-        <p class="small">${esc(v.narrative)}</p>
-        <p class="small muted">Clinical expectation ${chip(v.gold)} ${esc(v.why)}</p></div>
-      <div class="scroll"><table>
-        <thead><tr><th>Persona</th>${ENGINES.map((e) => `<th>${e.short}</th>`).join("")}</tr></thead>
-        <tbody id="grid">${grid}</tbody></table></div>
-      <p class="small muted">Select a result to see the conversation.</p>
-      <div id="conv"></div>
-    </div>`;
-  $("#ov").onclick = (ev) => { const tr = ev.target.closest("tr[data-v]"); if (tr) { selV = tr.dataset.v; renderVignettes(); } };
-  $("#grid").onclick = (ev) => { const td = ev.target.closest("td[data-eng]"); if (td) { selCell = { pid: td.dataset.pid, eng: td.dataset.eng }; renderVignettes(); $("#conv").scrollIntoView({ behavior: "smooth", block: "nearest" }); } };
-  renderConversation();
+    <p class="muted">Each vignette is told by three LLM personas to every engine. Select any result to read the conversation.</p>
+    <div class="legend small">${Object.entries(VERDICT).map(([k, x]) => `<span class="vd ${k}">${x.icon} ${x.text}</span>`).join("")}</div>
+    <div class="scroll"><table class="grouped">
+      <thead><tr><th>Persona</th>${ENGINES.map((e) => `<th>${e.name}</th>`).join("")}</tr></thead>
+      ${groups}</table></div>`;
+  $("#p-vignettes table").onclick = (ev) => { const b = ev.target.closest("button[data-eng]"); if (b) openConversation(b.dataset.v, b.dataset.pid, b.dataset.eng); };
 }
 
 function chatHtml(turns) {
   return `<div class="chat">${turns.map((t) => `<div class="msg ${t.who}">${esc(t.text)}${t.a ? `<span class="a ${t.a}">${t.a === "unsure" ? "not sure" : t.a}</span>` : ""}</div>`).join("")}</div>`;
 }
-function renderConversation() {
-  const v = V[selV], p = PERSONAS.find((x) => x.id === selCell.pid), e = ENGINES.find((x) => x.id === selCell.eng);
-  const all = results[v.id][p.id], r = all[e.id];
-  const intro = e.id === "llm" ? "" : `<div class="note">Opening message (this engine can't read free text, so the persona picks from a menu): "${esc(all.opening)}"</div>`;
-  const notes = (e.id === "bayes" ? r.notes.slice(0, 1) : r.notes).map((n) => `<div class="note">${esc(n)}</div>`).join("");
-  $("#conv").innerHTML = `<div class="col">
-    <div class="col-head"><b>${esc(p.name)} · ${e.name}</b><span class="cell">${chip(r.level)}${mark(r.level, v.gold)}</span></div>
-    <div class="note">UX ${r.ux.score}/100 · ${r.ux.asked} questions · ${r.ux.unsure} not understood</div>
-    ${intro}${chatHtml(r.transcript)}${notes}</div>`;
+let lastFocus = null;
+function openConversation(vid, pid, eng) {
+  const v = V[vid], p = PERSONAS.find((x) => x.id === pid), e = ENGINES.find((x) => x.id === eng);
+  const all = results[vid][pid], r = all[eng], vd = verdictOf(r.level, v.gold);
+  const intro = eng === "llm" ? "" : `<div class="note">This engine can't read free text, so the persona picked their main problem from a menu. Their own words were: "${esc(all.opening)}"</div>`;
+  const notes = (eng === "bayes" ? r.notes.slice(0, 1) : r.notes).map((n) => `<div class="note">${esc(n)}</div>`).join("");
+  $("#drawer-body").innerHTML = `
+    <div class="detail-head"><span class="small muted">${esc(p.name)} · ${e.name}</span><h3>${esc(v.title)}</h3>
+      <p class="small">${esc(v.narrative)}</p></div>
+    <div class="compare">
+      <div><span class="small muted">Clinicians expect</span>${chip(v.gold)}</div>
+      <div><span class="small muted">Engine said</span>${chip(r.level)}<span class="vd ${vd}">${VERDICT[vd].icon} ${VERDICT[vd].text}</span></div>
+    </div>
+    <p class="small muted">${esc(v.why)}</p>
+    <div class="note">Patient experience ${r.ux.score}/100 · ${r.ux.asked} questions · ${r.ux.unsure} not understood</div>
+    ${intro}${chatHtml(r.transcript)}${notes}`;
+  lastFocus = document.activeElement;
+  $("#drawer").hidden = false;
+  $("#drawer-close").focus();
 }
+function closeConversation() { $("#drawer").hidden = true; if (lastFocus) lastFocus.focus(); }
 
 function renderHow() {
   $("#p-how").innerHTML = `
@@ -706,6 +741,8 @@ function renderHow() {
 }
 
 const renderers = { results: renderResults, vignettes: renderVignettes, how: renderHow };
+$("#drawer").onclick = (ev) => { if (ev.target.closest("[data-close]")) closeConversation(); };
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !$("#drawer").hidden) closeConversation(); });
 document.querySelector(".tabs").onclick = (ev) => {
   const b = ev.target.closest(".tab"); if (!b) return;
   document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", t === b));
