@@ -33,6 +33,7 @@
   --shadow: none; color-scheme: dark }
 
 * { box-sizing: border-box }
+[hidden] { display: none !important }
 body { background: var(--bg); color: var(--fg); font: 400 15px/1.6 var(--font); font-variant-numeric: tabular-nums }
 .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 32px }
 h1, h2, h3 { color: var(--strong); line-height: 1.2; text-wrap: balance; margin: 0; font-weight: 600 }
@@ -596,7 +597,7 @@ if (typeof module !== "undefined") module.exports = { RECORDED };
 const ENGINES = [
   { id: "rules", name: "Rules engine", kind: "Deterministic", like: "Rules-based protocol, heavily simplified" },
   { id: "bayes", name: "Probability engine", kind: "Probabilistic", like: "Probabilistic symptom checker, heavily simplified" },
-  { id: "llm",   name: "Language model", kind: "LLM / Agentic", like: "A general AI model (Claude) given the urgency scale" },
+  { id: "llm",   name: "LLM/Agentic", kind: "Large language model", like: "A general AI model (Claude) given the urgency scale" },
 ];
 const V = Object.fromEntries(VIGNETTES.map((v) => [v.id, v]));
 const personas = PERSONAS.slice();
@@ -689,16 +690,7 @@ function renderResults() {
     </article>`;
   };
   $("#p-results").innerHTML = `
-    <div class="cards">${ENGINES.map(card).join("")}</div>
-    <div class="card">
-      <h2>What it shows</h2>
-      <ul class="points">
-        <li>Textbook cases flatter the structured engines.</li>
-        <li>How a persona tells the story changes the answer, for every engine.</li>
-        <li>The language model gives the best experience but is less consistent and over-cautious.</li>
-        <li>One shared test bench lets us compare any engine, bought or built, on equal terms.</li>
-      </ul>
-    </div>`;
+    <div class="cards">${ENGINES.map(card).join("")}</div>`;
 }
 
 let selVig = "V15";
@@ -716,7 +708,7 @@ function renderVignettes() {
   $("#p-vignettes").innerHTML = `
     <p class="muted">Each case, told clearly. Select a row to see the conversations.</p>
     <div class="scroll"><table>
-      <thead><tr><th>Case</th><th>Answer key</th><th>Rules</th><th>Probability</th><th>Language model</th></tr></thead>
+      <thead><tr><th>Case</th><th>Answer key</th><th>Rules</th><th>Probability</th><th>LLM/Agentic</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div id="vig-detail"></div>`;
   $("#p-vignettes tbody").onclick = (e) => { const tr = e.target.closest("tr"); if (tr) { selVig = tr.dataset.id; selRun = 0; renderVignettes(); $("#vig-detail").scrollIntoView({ behavior: "smooth", block: "start" }); } };
@@ -747,7 +739,7 @@ function renderVigDetail() {
     <div class="three">
       ${engineCol("Rules", r.rules.level, v.gold, chatHtml(r.rules.transcript) + notesHtml(r.rules.notes))}
       ${engineCol("Probability", r.bayes.level, v.gold, chatHtml(r.bayes.transcript) + notesHtml(r.bayes.notes.slice(0, 1)))}
-      ${engineCol("Language model", ll, v.gold, llmBody)}
+      ${engineCol("LLM/Agentic", ll, v.gold, llmBody)}
     </div></div>`;
   $("#vig-detail .runsel").onclick = (e) => { const b = e.target.closest("[data-run]"); if (b) { selRun = +b.dataset.run; renderVigDetail(); } };
 }
@@ -769,7 +761,7 @@ function renderPersonas() {
     <div class="controls">${caseBtns}</div>
     <p class="small">Answer key ${chip(v.gold)}</p>
     <div class="scroll"><table>
-      <thead><tr><th>Persona</th><th>Rules</th><th>Probability</th><th>Language model</th></tr></thead>
+      <thead><tr><th>Persona</th><th>Rules</th><th>Probability</th><th>LLM/Agentic</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <div id="per-detail"></div>`;
   $("#p-personas .controls").onclick = (e) => { const b = e.target.closest("[data-case]"); if (b) { selCase = b.dataset.case; renderPersonas(); } };
@@ -780,7 +772,7 @@ function renderPersonas() {
 function renderPerDetail() {
   const r = per[selCase][selCell.pid]; if (!r) { $("#per-detail").innerHTML = ""; return; }
   const v = V[selCase], p = personas.find((x) => x.id === selCell.pid), e = ENGINES.find((x) => x.id === selCell.eng);
-  const name = { rules: "Rules", bayes: "Probability", llm: "Language model" }[e.id];
+  const name = { rules: "Rules", bayes: "Probability", llm: "LLM/Agentic" }[e.id];
   let body, level;
   if (e.id === "llm") {
     level = r.llm.level;
@@ -802,7 +794,7 @@ function renderHow() {
         <p class="small">Red-flag questions, then a fixed flowchart. Same answer every time; only knows what it asks.</p></article>
       <article class="card"><div><h3>Probability engine</h3><div class="kind">Probabilistic · like a simplified symptom checker</div></div>
         <p class="small">Weighs ${Object.keys(CONDITIONS).length} conditions and picks the most useful next question. Blind to anything it doesn't model.</p></article>
-      <article class="card"><div><h3>Language model</h3><div class="kind">LLM / Agentic · Claude</div></div>
+      <article class="card"><div><h3>LLM/Agentic</h3><div class="kind">Large language model · Claude</div></div>
         <p class="small">Free conversation, no flowchart. Flexible, but less consistent and harder to audit.</p></article>
     </div>
     <div class="detail-head"><h3>LLM simulated personas</h3></div>
